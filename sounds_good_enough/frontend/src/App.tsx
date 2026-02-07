@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties, JSX } from "react";
-import { ProcessResponse, processAudio } from "./api/client";
+import type { ProcessResponse } from "./api/client";
+import { processAudio } from "./api/client";
 import ProcessingStatus from "./components/ProcessingStatus";
 import Results from "./components/Results";
 import UploadZone from "./components/UploadZone";
