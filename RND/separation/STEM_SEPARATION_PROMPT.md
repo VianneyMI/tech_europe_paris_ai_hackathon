@@ -11,7 +11,7 @@ You are a new Codex instance exploring audio stem separation tools to split voca
 
 ### Constraints
 - Use only tools that can run locally.
-- Favor simple CLI or Python scripts.
+- Favor simple CLI or Python scripts - UV and Typer recommended.
 - Document exact install steps and minimal runtime requirements.
 - Aim for a tight feedback loop (speed matters).
 
@@ -42,12 +42,14 @@ You are a new Codex instance exploring audio stem separation tools to split voca
 - If a tool is too heavy or fails, document the failure and move on.
 
 ### Output Format
-Please deliver results as:
-- `TOOLS_OVERVIEW.md`
-- `APP_1_<tool>.py` (or `.sh`)
-- `APP_2_<tool>.py`
-- `APP_3_<tool>.py`
-- `LEARNINGS.md`
+Please deliver results inside `RND/separation/` as:
+- `RND/separation/TOOLS_OVERVIEW.md`
+- `RND/separation/LEARNINGS.md` # For general learning notes
+- `RND/separation/<tool_name>/main.py` (or `.sh`)
+- `RND/separation/<tool_name>/uv.lock`
+- `RND/separation/<tool_name>/pyproject.toml`
+- `RND/separation/<tool_name>/README.md`
+- `RND/separation/<tool_name>/LEARNINGS.md` # For tool-specific learning notes
 
 ### Notes
 - Focus on practical, runnable code.
