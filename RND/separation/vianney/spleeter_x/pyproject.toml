@@ -1,0 +1,20 @@
+[project]
+name = "spleeter_x"
+version = "0.1.0"
+description = "Spleeter install playground (macOS arm64 friendly)"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "ffmpeg-python==0.2.0",
+    "httpx[http2]>=0.19.0,<0.20.0",
+    "librosa==0.8.1",
+    "llvmlite==0.40.1",
+    "norbert==0.2.1",
+    "numba==0.57.1",
+    "numpy>=1.19.2,<2.0.0",
+    "pandas>=1.2,<2.0",
+    "protobuf>=3.19.4,<4.0.0",
+    "tensorflow-macos==2.12.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "tensorflow-metal==0.8.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "typer>=0.3.2,<0.4.0",
+]

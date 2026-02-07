@@ -13,3 +13,7 @@ build/
 
 # Data
 data/
+**/*.wav
+
+# Model
+**/pretrained_models/
