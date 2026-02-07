@@ -17,3 +17,7 @@ data/
 
 # Model
 **/pretrained_models/
+
+
+# Env
+.env
