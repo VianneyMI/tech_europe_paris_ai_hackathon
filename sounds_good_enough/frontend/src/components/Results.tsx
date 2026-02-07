@@ -1,6 +1,8 @@
 import type { CSSProperties, JSX } from "react";
 
-import { LyricsTimestamp, toAbsoluteAudioUrl } from "../api/client";
+import type { LyricsTimestamp } from "../api/client";
+import { toAbsoluteAudioUrl } from "../api/client";
+import KaraokePlayer from "./KaraokePlayer";
 
 interface ResultsProps {
   lyrics: string;
@@ -13,6 +15,8 @@ export default function Results({ lyrics, timestamps, vocalsUrl, instrumentalUrl
   return (
     <section style={styles.wrapper}>
       <h2 style={styles.heading}>Results</h2>
+
+      <KaraokePlayer instrumentalUrl={instrumentalUrl} timestamps={timestamps} />
 
       <div style={styles.playerRow}>
         <div style={styles.playerBlock}>
@@ -31,13 +35,13 @@ export default function Results({ lyrics, timestamps, vocalsUrl, instrumentalUrl
         </div>
       </div>
 
-      <div>
-        <h3 style={styles.subheading}>Lyrics</h3>
+      <details style={styles.details}>
+        <summary style={styles.summary}>Raw Lyrics</summary>
         <pre style={styles.lyrics}>{lyrics || "(No transcription text returned)"}</pre>
-      </div>
+      </details>
 
-      <div>
-        <h3 style={styles.subheading}>Timestamps</h3>
+      <details style={styles.details}>
+        <summary style={styles.summary}>Raw Timestamps</summary>
         {timestamps.length === 0 ? (
           <p style={styles.empty}>No timestamp segments returned.</p>
         ) : (
@@ -49,7 +53,7 @@ export default function Results({ lyrics, timestamps, vocalsUrl, instrumentalUrl
             ))}
           </ul>
         )}
-      </div>
+      </details>
     </section>
   );
 }
@@ -73,7 +77,7 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: 16,
-    marginBottom: 20,
+    margin: "20px 0",
   },
   playerBlock: {
     display: "flex",
@@ -93,6 +97,18 @@ const styles: Record<string, CSSProperties> = {
   empty: {
     margin: 0,
     color: "#4d596a",
+  },
+  details: {
+    border: "1px solid #d3d7df",
+    borderRadius: 8,
+    padding: "8px 12px",
+    backgroundColor: "#f9fbff",
+    marginTop: 12,
+  },
+  summary: {
+    cursor: "pointer",
+    fontWeight: 600,
+    marginBottom: 8,
   },
   list: {
     margin: 0,
