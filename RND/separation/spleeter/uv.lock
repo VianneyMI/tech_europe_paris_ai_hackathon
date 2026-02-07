@@ -1,0 +1,6 @@
+# Placeholder lock file
+# Date: 2026-02-07
+# Why placeholder: `uv lock` panicked in this environment with:
+# "Attempted to create a NULL object" in system-configuration crate.
+# Regenerate on a normal host with:
+#   UV_CACHE_DIR=.uv-cache uv lock
