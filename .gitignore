@@ -9,3 +9,7 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+
+
+# Data
+data/
