@@ -8,6 +8,9 @@ from pathlib import Path
 
 
 def _find_demucs_stem_dir(base_output: Path, model: str, input_file: Path) -> Path:
+    # Demucs writes stems under: <out>/<model>/<track_name>/...
+    # Some filenames can be slightly normalized by upstream code,
+    # so we try exact path first, then a permissive glob fallback.
     expected = base_output / model / input_file.stem
     if expected.exists():
         return expected
@@ -28,9 +31,15 @@ def separate(input_audio: Path, output_dir: Path, model: str, device: str) -> tu
         raise FileNotFoundError(f"Input audio not found: {input_audio}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Keep raw tool output separate from normalized final outputs.
     demucs_tmp = output_dir / "_demucs_raw"
     demucs_tmp.mkdir(parents=True, exist_ok=True)
 
+    # We intentionally call Demucs through its CLI module, not private Python APIs.
+    # Why:
+    # 1) CLI flags are stable and easy to reproduce from shell docs.
+    # 2) This keeps our wrapper small and resilient to internal refactors.
+    # 3) Using sys.executable ensures Demucs runs in the same Python env as this script.
     cmd = [
         sys.executable,
         "-m",
@@ -47,6 +56,7 @@ def separate(input_audio: Path, output_dir: Path, model: str, device: str) -> tu
     ]
 
     print(f"[demucs] Running: {' '.join(cmd)}")
+    # capture_output=True lets us return concise, actionable error messages to users.
     result = subprocess.run(cmd, text=True, capture_output=True)
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
@@ -62,6 +72,8 @@ def separate(input_audio: Path, output_dir: Path, model: str, device: str) -> tu
     track_out = output_dir / input_audio.stem
     track_out.mkdir(parents=True, exist_ok=True)
 
+    # Normalize naming across all apps in this R&D:
+    # Demucs emits `no_vocals.wav`; we expose `music.wav`.
     vocals_out = track_out / "vocals.wav"
     music_out = track_out / "music.wav"
     shutil.copy2(vocals_src, vocals_out)
