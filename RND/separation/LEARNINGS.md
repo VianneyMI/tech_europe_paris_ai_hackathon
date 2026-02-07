@@ -26,7 +26,12 @@ Stem separation estimates source tracks (like vocals vs accompaniment) from a mi
 - Dependency ecosystems differ a lot across tools (PyTorch vs TensorFlow), so isolated per-tool environments are cleaner than one shared env.
 - Tool CLIs output different stem names (`no_vocals`, `accompaniment`, separate drums/bass/other), so each wrapper normalizes to exactly `vocals.wav` + `music.wav`.
 - On this Apple Silicon host, native Spleeter installation repeatedly backtracked into legacy `numba` builds and failed; Docker fallback is implemented but may be slow due amd64 emulation.
+- Demucs on some environments can require `torchcodec`/`soundfile` at runtime depending on torchaudio backend behavior.
 - Some advanced ecosystems (UVR/MDX) are powerful but less standardized for tiny reproducible scripts; documented in matrix but not selected for the three mini-app deliverables.
+
+## Troubleshooting location
+
+- Detailed error-to-fix guide: `RND/separation/TROUBLESHOOTING.md`
 
 ## Tight feedback loop tips
 

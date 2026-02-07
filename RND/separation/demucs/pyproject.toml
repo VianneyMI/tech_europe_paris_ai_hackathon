@@ -5,6 +5,8 @@ description = "Small CLI wrapper around Demucs 2-stem separation"
 requires-python = ">=3.10"
 dependencies = [
   "demucs>=4.0.1",
+  "soundfile>=0.12.1",
+  "torchcodec",
 ]
 
 [tool.uv]

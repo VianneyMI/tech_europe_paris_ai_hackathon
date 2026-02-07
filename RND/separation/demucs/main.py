@@ -84,7 +84,15 @@ def main() -> int:
     try:
         vocals_out, music_out = separate(args.input_audio, args.output_dir, args.model, args.device)
     except Exception as exc:
+        text = str(exc).lower()
         print(f"[demucs] ERROR: {exc}")
+        if "torchcodec" in text:
+            print("[demucs] Hint: install torchcodec in this env, then retry.")
+            print(f"[demucs]   {sys.executable} -m pip install torchcodec")
+        if "backend" in text or "couldn't find appropriate backend" in text:
+            print("[demucs] Hint: install audio IO backends for torchaudio.")
+            print(f"[demucs]   {sys.executable} -m pip install soundfile")
+            print("[demucs]   and ensure ffmpeg is installed and on PATH")
         return 1
 
     print("[demucs] Separation complete")

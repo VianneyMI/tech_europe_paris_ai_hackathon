@@ -25,3 +25,8 @@ python -m unittest -v
 - First run downloads model weights.
 - CPU is default (`--device cpu`).
 - If you have GPU configured with PyTorch, use `--device cuda`.
+- This app declares `torchcodec` and `soundfile` explicitly because some Demucs/torchaudio combos require them at runtime.
+
+## Troubleshooting
+- See `/Users/vianneymixtur/.codex/worktrees/b9c1/tech_europe_paris_ai_hackathon/RND/separation/TROUBLESHOOTING.md`
+- Common Demucs issue: missing `torchcodec` or missing torchaudio backend for WAV writes.
