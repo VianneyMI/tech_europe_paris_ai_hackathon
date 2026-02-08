@@ -208,6 +208,7 @@ export default function KaraokePlayer({ instrumentalUrl, timestamps }: KaraokePl
   const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
   const [activeLineIndex, setActiveLineIndex] = useState<number>(-1);
   const [lineCursorIndex, setLineCursorIndex] = useState<number>(-1);
+  const [fullscreen, setFullscreen] = useState<boolean>(false);
 
   const lines = useMemo(() => groupSegmentsIntoLines(timestamps), [timestamps]);
   const activeWordIndexRef = useRef<number>(activeWordIndex);
@@ -330,8 +331,35 @@ export default function KaraokePlayer({ instrumentalUrl, timestamps }: KaraokePl
     activeLineElement?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeLineIndex]);
 
+  useEffect(() => {
+    if (!fullscreen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setFullscreen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fullscreen]);
+
   return (
-    <section className="karaoke-player" aria-label="Karaoke player">
+    <section
+      className={fullscreen ? "karaoke-player karaoke-player--fullscreen" : "karaoke-player"}
+      aria-label="Karaoke player"
+    >
+      <button
+        type="button"
+        className={fullscreen ? "karaoke-fullscreen-button karaoke-fullscreen-button--exit" : "karaoke-fullscreen-button"}
+        onClick={() => setFullscreen((value) => !value)}
+      >
+        {fullscreen ? "Exit Fullscreen" : "Full Screen"}
+      </button>
       <h3 className="karaoke-title">Karaoke</h3>
       <audio ref={audioRef} controls src={toAbsoluteAudioUrl(instrumentalUrl)} className="karaoke-audio" />
 
