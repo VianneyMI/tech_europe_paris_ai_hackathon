@@ -21,3 +21,12 @@ class ProcessResponse(BaseModel):
     lyrics_with_timestamps: list[LyricsTimestamp]
     vocals_url: str
     instrumental_url: str
+
+
+class ProcessJobResponse(BaseModel):
+    """Response payload for asynchronous URL-based processing jobs."""
+
+    job_id: str
+    status: str  # "queued" | "processing" | "done" | "error"
+    error: str | None = None
+    result: ProcessResponse | None = None
