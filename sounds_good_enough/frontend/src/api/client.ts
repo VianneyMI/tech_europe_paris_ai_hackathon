@@ -44,6 +44,29 @@ export async function processAudio(file: File): Promise<ProcessResponse> {
   return (await response.json()) as ProcessResponse;
 }
 
+export async function fetchDemo(): Promise<ProcessResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/demo`);
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "detail" in body &&
+        typeof (body as { detail: unknown }).detail === "string"
+      ) {
+        detail = (body as { detail: string }).detail;
+      }
+    } catch {
+      // Ignore JSON parse failures and keep default error.
+    }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as ProcessResponse;
+}
+
 export function toAbsoluteAudioUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;

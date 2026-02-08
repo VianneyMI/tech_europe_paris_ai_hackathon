@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import shutil
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import uuid4
-import shutil
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -61,7 +62,10 @@ def _cleanup_expired_jobs(request: Request) -> None:
     expired = [
         job_id
         for job_id, job in jobs.items()
-        if now - job.created_at > settings.job_ttl_seconds
+        if (
+            now - job.created_at > settings.job_ttl_seconds
+            and job_id != getattr(request.app.state, "demo_job_id", None)
+        )
     ]
     for job_id in expired:
         job = jobs.pop(job_id)
@@ -79,8 +83,6 @@ async def process_audio(
     settings: Settings = request.app.state.settings
     _validate_upload(file, settings)
     _cleanup_expired_jobs(request)
-    if not settings.gradium_api_key.strip():
-        raise HTTPException(status_code=500, detail="GRADIUM_API_KEY is missing.")
 
     data = await file.read()
     if len(data) > settings.upload_max_mb * 1024 * 1024:
@@ -88,6 +90,24 @@ async def process_audio(
             status_code=400,
             detail=f"File exceeds maximum size of {settings.upload_max_mb}MB.",
         )
+
+    file_hash = hashlib.sha256(data).hexdigest()
+    jobs: dict[str, StoredJob] = request.app.state.jobs
+    cache: dict[str, tuple[str, ProcessResponse]] = request.app.state.cache
+    cached = cache.get(file_hash)
+    if cached is not None:
+        cached_job_id, cached_response = cached
+        cached_job = jobs.get(cached_job_id)
+        if cached_job is not None:
+            vocals_path = cached_job.path / "vocals.wav"
+            instrumental_path = cached_job.path / "instrumental.wav"
+            if vocals_path.exists() and instrumental_path.exists():
+                cached_job.created_at = time.time()
+                return cached_response
+        cache.pop(file_hash, None)
+
+    if not settings.gradium_api_key.strip():
+        raise HTTPException(status_code=500, detail="GRADIUM_API_KEY is missing.")
 
     job_id = str(uuid4())
     job_dir = Path(tempfile.mkdtemp(prefix=f"sge-{job_id}-"))
@@ -110,9 +130,7 @@ async def process_audio(
     except TranscriptionError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    request.app.state.jobs[job_id] = StoredJob(path=job_dir, created_at=time.time())
-
-    return ProcessResponse(
+    response = ProcessResponse(
         job_id=job_id,
         lyrics=transcription.text,
         lyrics_with_timestamps=[
@@ -122,6 +140,19 @@ async def process_audio(
         vocals_url=f"/api/files/{job_id}/vocals.wav",
         instrumental_url=f"/api/files/{job_id}/instrumental.wav",
     )
+    request.app.state.jobs[job_id] = StoredJob(path=job_dir, created_at=time.time())
+    cache[file_hash] = (job_id, response)
+    return response
+
+
+@router.get("/demo", response_model=ProcessResponse)
+async def get_demo(request: Request) -> ProcessResponse:
+    """Return pre-seeded demo processing results when available."""
+
+    demo_response = cast(ProcessResponse | None, getattr(request.app.state, "demo_response", None))
+    if demo_response is None:
+        raise HTTPException(status_code=404, detail="Demo data not available.")
+    return demo_response
 
 
 @router.get("/files/{job_id}/{filename}")
