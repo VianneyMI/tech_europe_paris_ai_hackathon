@@ -33,7 +33,7 @@ export default function App(): JSX.Element {
       <div style={styles.container}>
         <header>
           <h1 style={styles.title}>Sounds Good Enough</h1>
-          <p style={styles.subtitle}>Upload a song to split vocals and transcribe lyrics with timestamps.</p>
+          <p style={styles.subtitle}>Drop a song. Get karaoke.</p>
         </header>
         <UploadZone disabled={status === "processing"} onSelectFile={handleSelectFile} />
         <ProcessingStatus status={status} message={message} />
