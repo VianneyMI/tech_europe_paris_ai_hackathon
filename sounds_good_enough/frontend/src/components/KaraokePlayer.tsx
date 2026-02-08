@@ -328,8 +328,19 @@ export default function KaraokePlayer({ instrumentalUrl, timestamps }: KaraokePl
     }
 
     const activeLineElement = lineElementsRef.current[activeLineIndex];
-    activeLineElement?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [activeLineIndex]);
+    if (!activeLineElement) {
+      return;
+    }
+
+    // After a fullscreen toggle the layout changes drastically.
+    // Wait one frame so the browser finishes layout recalculation,
+    // then scroll the active line back into view.
+    const frameId = requestAnimationFrame(() => {
+      activeLineElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [activeLineIndex, fullscreen]);
 
   useEffect(() => {
     if (!fullscreen) {

@@ -138,11 +138,16 @@
 .karaoke-player--fullscreen .karaoke-lyrics {
   flex: 1;
   max-height: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  overflow-y: auto;
   text-align: center;
   padding: 28px 42px;
+  /*
+   * Large vertical padding so the first & last lines can be
+   * centred via scrollIntoView({ block: "center" }) without
+   * needing flexbox centering (which breaks overflow-y scroll).
+   */
+  padding-top: 38vh;
+  padding-bottom: 38vh;
   background: transparent;
   border: none;
 }
