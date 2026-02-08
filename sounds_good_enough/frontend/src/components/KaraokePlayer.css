@@ -1,53 +1,67 @@
+/* ── Karaoke Player ── */
+
 .karaoke-player {
   position: relative;
-  border: 1px solid #293353;
-  border-radius: 12px;
-  padding: 20px;
-  background: radial-gradient(circle at top, #1f2a44 0%, #151c2f 55%, #0e1322 100%);
-  color: #e9f0ff;
+  border: 1px solid rgba(200, 64, 255, 0.15);
+  border-radius: 16px;
+  padding: 24px;
+  background: radial-gradient(circle at top, #1a103a 0%, #120e24 55%, #0d0a1a 100%);
+  color: #e8e0f0;
+  box-shadow: 0 4px 40px rgba(155, 48, 255, 0.08);
+  transition: box-shadow 300ms ease;
+}
+
+.karaoke-player:hover {
+  box-shadow: 0 4px 50px rgba(155, 48, 255, 0.14);
 }
 
 .karaoke-title {
-  margin: 0 0 12px;
-  font-size: 20px;
+  margin: 0 0 14px;
+  font-size: 22px;
   font-weight: 700;
+  background: linear-gradient(135deg, #ff2d78, #c840ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .karaoke-audio {
   width: 100%;
   margin-bottom: 16px;
+  border-radius: 8px;
 }
 
 .karaoke-lyrics {
   max-height: 360px;
   overflow-y: auto;
-  padding: 14px;
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .karaoke-line {
   font-size: 24px;
   line-height: 1.7;
-  transition: opacity 140ms ease;
+  transition: opacity 180ms ease, transform 180ms ease;
   margin-bottom: 6px;
 }
 
 .karaoke-line--past {
-  opacity: 0.38;
+  opacity: 0.3;
 }
 
 .karaoke-line--active {
   opacity: 1;
+  transform: scale(1.01);
 }
 
 .karaoke-line--future {
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .karaoke-word {
-  color: #dfe9ff;
+  color: rgba(232, 224, 240, 0.85);
   transition: color 140ms ease, text-shadow 140ms ease, transform 140ms ease;
   display: inline-block;
 }
@@ -58,33 +72,41 @@
 
 .karaoke-word--active {
   color: #ffd700;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
-  transform: scale(1.03);
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.7), 0 0 28px rgba(255, 215, 0, 0.3);
+  transform: scale(1.05);
 }
 
 .karaoke-empty {
   margin: 0;
-  color: #b9c4dd;
+  color: rgba(232, 224, 240, 0.5);
 }
+
+/* ── Fullscreen button ── */
 
 .karaoke-fullscreen-button {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  border: 1px solid rgba(233, 240, 255, 0.35);
-  background: rgba(12, 17, 29, 0.7);
-  color: #e9f0ff;
+  top: 16px;
+  right: 16px;
+  border: 1px solid rgba(200, 64, 255, 0.3);
+  background: rgba(15, 10, 30, 0.8);
+  color: #e8e0f0;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   font-size: 12px;
   font-weight: 700;
+  font-family: 'Outfit', sans-serif;
   letter-spacing: 0.02em;
   cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .karaoke-fullscreen-button:hover {
-  background: rgba(26, 35, 56, 0.9);
+  background: rgba(200, 64, 255, 0.12);
+  border-color: rgba(200, 64, 255, 0.5);
+  box-shadow: 0 0 16px rgba(200, 64, 255, 0.15);
 }
+
+/* ── Fullscreen mode ── */
 
 .karaoke-player--fullscreen {
   position: fixed;
@@ -96,14 +118,14 @@
   border: none;
   border-radius: 0;
   z-index: 9999;
-  background: #000;
+  background: radial-gradient(ellipse at center, #1a103a 0%, #0a0714 100%);
   display: flex;
   flex-direction: column;
   padding: 24px;
 }
 
 .karaoke-player--fullscreen .karaoke-title {
-  font-size: 30px;
+  font-size: 32px;
   text-align: center;
   margin-top: 14px;
 }
@@ -116,16 +138,23 @@
 .karaoke-player--fullscreen .karaoke-lyrics {
   flex: 1;
   max-height: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  overflow-y: auto;
   text-align: center;
   padding: 28px 42px;
+  /*
+   * Large vertical padding so the first & last lines can be
+   * centred via scrollIntoView({ block: "center" }) without
+   * needing flexbox centering (which breaks overflow-y scroll).
+   */
+  padding-top: 38vh;
+  padding-bottom: 38vh;
+  background: transparent;
+  border: none;
 }
 
 .karaoke-player--fullscreen .karaoke-line {
-  font-size: 42px;
-  line-height: 1.55;
+  font-size: 44px;
+  line-height: 1.5;
 }
 
 .karaoke-player--fullscreen .karaoke-fullscreen-button--exit {

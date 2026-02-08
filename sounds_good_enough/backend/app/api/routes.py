@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from app.config import Settings
-from app.models import LyricsTimestamp, ProcessResponse
+from app.models import LyricsTimestamp, ProcessJobResponse, ProcessResponse
+from app.services.downloader import DownloadError, download_audio
 from app.services.separator import SeparationError, separate
 from app.services.transcriber import TranscriptionError, transcribe
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".mp3", ".wav"}
 ALLOWED_MIME_PREFIX = "audio/"
@@ -29,6 +35,23 @@ class StoredJob:
 
     path: Path
     created_at: float
+
+
+@dataclass
+class BackgroundJob:
+    """Tracks the state of an asynchronous URL processing job."""
+
+    job_id: str
+    status: str = "queued"  # queued | processing | done | error
+    error: str | None = None
+    result: ProcessResponse | None = None
+    task: asyncio.Task[None] | None = field(default=None, repr=False)
+
+
+class UrlPayload(BaseModel):
+    """Request body for the URL processing endpoint."""
+
+    url: str
 
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -172,3 +195,116 @@ async def get_file(job_id: str, filename: str, request: Request) -> FileResponse
         raise HTTPException(status_code=404, detail="File not found.")
 
     return FileResponse(path=file_path, media_type="audio/wav", filename=filename)
+
+
+# ---------------------------------------------------------------------------
+# Background URL processing helpers
+# ---------------------------------------------------------------------------
+
+
+async def _process_url_background(
+    job: BackgroundJob,
+    url: str,
+    settings: Settings,
+    jobs: dict[str, StoredJob],
+) -> None:
+    """Download YouTube audio, separate stems, transcribe – all in background."""
+
+    job_id = job.job_id
+    job_dir = Path(tempfile.mkdtemp(prefix=f"sge-{job_id}-"))
+
+    try:
+        job.status = "processing"
+
+        # 1. Download audio from YouTube
+        dl_result = await download_audio(url, job_dir)
+        input_path = dl_result.audio_path
+
+        # 2. Separate vocals / instrumental
+        separation_result = await separate(
+            input_path=input_path,
+            output_dir=job_dir,
+            model=settings.demucs_model,
+            device=settings.demucs_device,
+        )
+
+        # 3. Transcribe vocals
+        transcription = await transcribe(
+            audio_path=separation_result.vocals_path,
+            api_key=settings.gradium_api_key,
+        )
+
+        response = ProcessResponse(
+            job_id=job_id,
+            lyrics=transcription.text,
+            lyrics_with_timestamps=[
+                LyricsTimestamp(text=seg.text, start_s=seg.start_s, stop_s=seg.stop_s)
+                for seg in transcription.segments
+            ],
+            vocals_url=f"/api/files/{job_id}/vocals.wav",
+            instrumental_url=f"/api/files/{job_id}/instrumental.wav",
+        )
+
+        jobs[job_id] = StoredJob(path=job_dir, created_at=time.time())
+        job.result = response
+        job.status = "done"
+
+    except (DownloadError, SeparationError, TranscriptionError) as exc:
+        job.status = "error"
+        job.error = str(exc)
+        logger.exception("Background URL processing failed for job %s", job_id)
+    except Exception as exc:
+        job.status = "error"
+        job.error = f"Unexpected error: {exc}"
+        logger.exception("Unexpected error in background URL processing for job %s", job_id)
+
+
+# ---------------------------------------------------------------------------
+# URL processing endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/process/url", response_model=ProcessJobResponse)
+async def process_audio_from_url(
+    request: Request,
+    payload: UrlPayload,
+) -> ProcessJobResponse:
+    """Accept a YouTube URL and start background processing."""
+
+    settings: Settings = request.app.state.settings
+
+    if not settings.gradium_api_key.strip():
+        raise HTTPException(status_code=500, detail="GRADIUM_API_KEY is missing.")
+
+    _cleanup_expired_jobs(request)
+
+    job_id = str(uuid4())
+    bg_job = BackgroundJob(job_id=job_id)
+
+    background_jobs: dict[str, BackgroundJob] = request.app.state.background_jobs
+    stored_jobs: dict[str, StoredJob] = request.app.state.jobs
+
+    bg_job.task = asyncio.create_task(
+        _process_url_background(bg_job, payload.url, settings, stored_jobs),
+    )
+    background_jobs[job_id] = bg_job
+
+    return ProcessJobResponse(job_id=job_id, status=bg_job.status)
+
+
+@router.get("/jobs/{job_id}", response_model=ProcessJobResponse)
+async def get_job_status(job_id: str, request: Request) -> ProcessJobResponse:
+    """Return the current status of a background processing job."""
+
+    background_jobs: dict[str, BackgroundJob] = request.app.state.background_jobs
+    bg_job = background_jobs.get(job_id)
+
+    if bg_job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    return ProcessJobResponse(
+        job_id=bg_job.job_id,
+        status=bg_job.status,
+        error=bg_job.error,
+        result=bg_job.result,
+    )

@@ -12,6 +12,13 @@ export interface ProcessResponse {
   instrumental_url: string;
 }
 
+export interface ProcessJobResponse {
+  job_id: string;
+  status: "queued" | "processing" | "done" | "error";
+  error: string | null;
+  result: ProcessResponse | null;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export async function processAudio(file: File): Promise<ProcessResponse> {
@@ -65,6 +72,54 @@ export async function fetchDemo(): Promise<ProcessResponse> {
   }
 
   return (await response.json()) as ProcessResponse;
+}
+
+export async function processAudioFromUrl(url: string): Promise<ProcessJobResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/process/url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "detail" in body &&
+        typeof (body as { detail: unknown }).detail === "string"
+      ) {
+        detail = (body as { detail: string }).detail;
+      }
+    } catch {
+      // Ignore JSON parse failures and keep default error.
+    }
+    throw new Error(detail);
+  }
+  return (await response.json()) as ProcessJobResponse;
+}
+
+export async function fetchProcessJob(jobId: string): Promise<ProcessJobResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}`);
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "detail" in body &&
+        typeof (body as { detail: unknown }).detail === "string"
+      ) {
+        detail = (body as { detail: string }).detail;
+      }
+    } catch {
+      // Ignore JSON parse failures and keep default error.
+    }
+    throw new Error(detail);
+  }
+  return (await response.json()) as ProcessJobResponse;
 }
 
 export function toAbsoluteAudioUrl(path: string): string {

@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX } from "react";
+import type { JSX } from "react";
 import "./ProcessingStatus.css";
 
 interface ProcessingStatusProps {
@@ -7,40 +7,31 @@ interface ProcessingStatusProps {
 }
 
 export default function ProcessingStatus({ status, message }: ProcessingStatusProps): JSX.Element {
-  const color =
-    status === "processing"
-      ? "#946100"
-      : status === "done"
-        ? "#096b2f"
-        : status === "error"
-          ? "#8b1212"
-          : "#4d596a";
+  const isError = status === "error";
 
   return (
-    <section style={{ ...styles.wrapper, borderColor: color }}>
-      <h2 style={styles.heading}>Status</h2>
-      <div style={styles.messageRow}>
-        {status === "processing" ? <span className="processing-spinner" aria-hidden="true" /> : null}
-        <p style={{ margin: 0, color }}>{message}</p>
+    <section className="glass-card processing-status-card">
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        {status === "processing" ? (
+          <div className="processing-equalizer" aria-hidden="true">
+            <div className="processing-equalizer-bar" />
+            <div className="processing-equalizer-bar" />
+            <div className="processing-equalizer-bar" />
+            <div className="processing-equalizer-bar" />
+            <div className="processing-equalizer-bar" />
+          </div>
+        ) : null}
+        <p
+          style={{
+            margin: 0,
+            fontSize: 15,
+            fontWeight: 500,
+            color: isError ? "#ff6b6b" : "rgba(232, 224, 240, 0.8)",
+          }}
+        >
+          {message}
+        </p>
       </div>
     </section>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  wrapper: {
-    border: "1px solid #d3d7df",
-    borderRadius: 10,
-    padding: 16,
-    backgroundColor: "#ffffff",
-  },
-  heading: {
-    margin: "0 0 8px",
-    fontSize: 18,
-  },
-  messageRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-};

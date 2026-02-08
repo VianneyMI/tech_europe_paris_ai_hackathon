@@ -13,6 +13,7 @@ dependencies = [
   "torchcodec",
   "soundfile",
   "gradium>=0.5.7",
+  "yt-dlp>=2024.0.0",
 ]
 
 [dependency-groups]

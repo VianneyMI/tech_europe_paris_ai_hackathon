@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, cast
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import StoredJob, router
+from app.api.routes import BackgroundJob, StoredJob, router
 from app.config import Settings, get_settings
 
 if TYPE_CHECKING:
@@ -82,6 +82,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if not hasattr(app.state, "settings"):
         app.state.settings = get_settings()
     app.state.jobs = cast(dict[str, StoredJob], {})
+    app.state.background_jobs = cast(dict[str, BackgroundJob], {})
     app.state.cache = cast(dict[str, tuple[str, "ProcessResponse"]], {})
     app.state.demo_job_id = cast(str | None, None)
     app.state.demo_response = cast("ProcessResponse | None", None)
