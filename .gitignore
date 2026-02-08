@@ -21,3 +21,5 @@ data/
 
 # Env
 .env
+# Local Netlify folder
+.netlify

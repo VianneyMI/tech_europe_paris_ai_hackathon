@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     job_ttl_seconds: int = 1800
     cleanup_interval_seconds: int = 300
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, v: object) -> object:
+        """Accept a comma-separated string in addition to a JSON list."""
+        if isinstance(v, str) and not v.strip().startswith("["):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env",
