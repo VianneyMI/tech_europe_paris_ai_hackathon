@@ -7,13 +7,16 @@ import contextlib
 import shutil
 import time
 from collections.abc import AsyncIterator
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import StoredJob, router
 from app.config import Settings, get_settings
+
+if TYPE_CHECKING:
+    from app.models import ProcessResponse
 
 
 async def _cleanup_loop(app: FastAPI) -> None:
@@ -41,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if not hasattr(app.state, "settings"):
         app.state.settings = get_settings()
     app.state.jobs = cast(dict[str, StoredJob], {})
+    app.state.cache = cast(dict[str, tuple[str, "ProcessResponse"]], {})
     cleanup_task = asyncio.create_task(_cleanup_loop(app))
 
     try:
