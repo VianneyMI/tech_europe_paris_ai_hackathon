@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties, JSX } from "react";
 import type { ProcessResponse } from "./api/client";
-import { processAudio } from "./api/client";
+import { fetchDemo, processAudio } from "./api/client";
 import ProcessingStatus from "./components/ProcessingStatus";
 import Results from "./components/Results";
 import UploadZone from "./components/UploadZone";
@@ -11,9 +11,15 @@ export default function App(): JSX.Element {
   const [message, setMessage] = useState<string>("Upload a track to begin.");
   const [result, setResult] = useState<ProcessResponse | null>(null);
 
+  const resetToIdle = (): void => {
+    setStatus("idle");
+    setMessage("Upload a track to begin.");
+    setResult(null);
+  };
+
   const handleSelectFile = async (file: File): Promise<void> => {
     setStatus("processing");
-    setMessage("Separating vocals and transcribing lyrics. This may take a minute.");
+    setMessage(`Processing ${file.name}. This may take a minute.`);
     setResult(null);
 
     try {
@@ -21,6 +27,23 @@ export default function App(): JSX.Element {
       setResult(payload);
       setStatus("done");
       setMessage("Processing completed.");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unexpected error.";
+      setStatus("error");
+      setMessage(detail);
+    }
+  };
+
+  const handleTryDemo = async (): Promise<void> => {
+    setStatus("processing");
+    setMessage("Loading demo song...");
+    setResult(null);
+
+    try {
+      const payload = await fetchDemo();
+      setResult(payload);
+      setStatus("done");
+      setMessage("Demo loaded.");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unexpected error.";
       setStatus("error");
@@ -36,14 +59,29 @@ export default function App(): JSX.Element {
           <p style={styles.subtitle}>Drop a song. Get karaoke.</p>
         </header>
         <UploadZone disabled={status === "processing"} onSelectFile={handleSelectFile} />
+        {status === "idle" ? (
+          <button type="button" style={styles.secondaryButton} onClick={handleTryDemo}>
+            Try with a demo song
+          </button>
+        ) : null}
         <ProcessingStatus status={status} message={message} />
+        {status === "error" ? (
+          <button type="button" style={styles.secondaryButton} onClick={resetToIdle}>
+            Try Again
+          </button>
+        ) : null}
         {result ? (
-          <Results
-            lyrics={result.lyrics}
-            timestamps={result.lyrics_with_timestamps}
-            vocalsUrl={result.vocals_url}
-            instrumentalUrl={result.instrumental_url}
-          />
+          <>
+            <Results
+              lyrics={result.lyrics}
+              timestamps={result.lyrics_with_timestamps}
+              vocalsUrl={result.vocals_url}
+              instrumentalUrl={result.instrumental_url}
+            />
+            <button type="button" style={styles.primaryButton} onClick={resetToIdle}>
+              Process Another Song
+            </button>
+          </>
         ) : null}
       </div>
     </main>
@@ -72,5 +110,25 @@ const styles: Record<string, CSSProperties> = {
   subtitle: {
     margin: 0,
     color: "#4d596a",
+  },
+  primaryButton: {
+    justifySelf: "start",
+    backgroundColor: "#1041d1",
+    color: "#fff",
+    border: 0,
+    borderRadius: 8,
+    padding: "10px 16px",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  secondaryButton: {
+    justifySelf: "start",
+    backgroundColor: "#eef3ff",
+    color: "#243f7d",
+    border: "1px solid #bfd0ff",
+    borderRadius: 8,
+    padding: "10px 16px",
+    cursor: "pointer",
+    fontWeight: 600,
   },
 };
