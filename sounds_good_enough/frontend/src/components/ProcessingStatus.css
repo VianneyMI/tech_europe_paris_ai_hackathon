@@ -1,14 +1,44 @@
-.processing-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #f5dba2;
-  border-top-color: #946100;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
+/* ── Equalizer bars animation ── */
+
+.processing-equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 24px;
+  padding: 2px 0;
 }
 
-@keyframes spin {
+.processing-equalizer-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #ff2d78, #c840ff);
+  animation: equalizerBounce 1.2s ease-in-out infinite;
+}
+
+.processing-equalizer-bar:nth-child(1) { height: 40%; animation-delay: 0s; }
+.processing-equalizer-bar:nth-child(2) { height: 70%; animation-delay: 0.15s; }
+.processing-equalizer-bar:nth-child(3) { height: 50%; animation-delay: 0.3s; }
+.processing-equalizer-bar:nth-child(4) { height: 90%; animation-delay: 0.45s; }
+.processing-equalizer-bar:nth-child(5) { height: 60%; animation-delay: 0.6s; }
+
+@keyframes equalizerBounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* ── Status card fade-in ── */
+
+.processing-status-card {
+  animation: fadeSlideIn 300ms ease forwards;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }

@@ -5,6 +5,7 @@ import type { CSSProperties, JSX } from "react";
 interface UploadZoneProps {
   disabled: boolean;
   onSelectFile: (file: File) => void;
+  onSubmitUrl: (url: string) => void;
 }
 
 const ACCEPTED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp3"];
@@ -17,9 +18,10 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps): JSX.Element {
+export default function UploadZone({ disabled, onSelectFile, onSubmitUrl }: UploadZoneProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [urlInput, setUrlInput] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
   const handleFiles = (fileList: FileList | null): void => {
@@ -75,27 +77,31 @@ export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps):
     handleFiles(event.dataTransfer.files);
   };
 
-  const handleProcessClick = (): void => {
+  const handleStartKaraoke = (): void => {
     if (!selectedFile || disabled) {
       return;
     }
+    const file = selectedFile;
     setSelectedFile(null);
-    onSelectFile(selectedFile);
+    onSelectFile(file);
+  };
+
+  const handleProcessUrlClick = (): void => {
+    const url = urlInput.trim();
+    if (!url || disabled) {
+      return;
+    }
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      window.alert("Please paste a valid URL starting with http:// or https://.");
+      return;
+    }
+    setUrlInput("");
+    onSubmitUrl(url);
   };
 
   return (
-    <section
-      style={{
-        ...styles.wrapper,
-        ...(isDragOver && !disabled ? styles.wrapperDragOver : null),
-      }}
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <h2 style={styles.heading}>Upload Song</h2>
-      <p style={styles.description}>Supported formats: MP3 or WAV. Maximum size: 50MB.</p>
+    <section className="glass-card">
+      {/* ── File Drop Zone ── */}
       <input
         ref={inputRef}
         type="file"
@@ -104,92 +110,254 @@ export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps):
         style={{ display: "none" }}
         onChange={(event) => handleFiles(event.target.files)}
       />
-      <button
-        type="button"
-        disabled={disabled}
-        style={disabled ? styles.buttonDisabled : styles.button}
-        onClick={() => inputRef.current?.click()}
+
+      <div
+        role="button"
+        tabIndex={0}
+        style={{
+          ...styles.dropZone,
+          ...(isDragOver && !disabled ? styles.dropZoneDragOver : null),
+          ...(disabled ? styles.dropZoneDisabled : null),
+          ...(selectedFile ? styles.dropZoneWithFile : null),
+        }}
+        onClick={() => {
+          if (!disabled && !selectedFile) {
+            inputRef.current?.click();
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (!disabled && !selectedFile) {
+              inputRef.current?.click();
+            }
+          }
+        }}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        Choose Audio File
-      </button>
-      {selectedFile ? (
-        <p style={styles.fileInfo}>
-          {selectedFile.name} - {formatFileSize(selectedFile.size)}
-        </p>
-      ) : null}
-      <button
-        type="button"
-        disabled={disabled || selectedFile === null}
-        style={disabled || selectedFile === null ? styles.processButtonDisabled : styles.processButton}
-        onClick={handleProcessClick}
-      >
-        Process Song
-      </button>
+        {selectedFile ? (
+          <div style={styles.fileSelectedContent}>
+            <div style={styles.fileIcon}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+            </div>
+            <div style={styles.fileDetails}>
+              <span style={styles.fileName}>{selectedFile.name}</span>
+              <span style={styles.fileSize}>{formatFileSize(selectedFile.size)}</span>
+            </div>
+            <div style={styles.fileActions}>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={disabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleStartKaraoke();
+                }}
+              >
+                Start Karaoke!
+              </button>
+              <button
+                type="button"
+                style={styles.changeFileLink}
+                disabled={disabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedFile(null);
+                  inputRef.current?.click();
+                }}
+              >
+                Change file
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={styles.dropZoneContent}>
+            <div style={styles.musicIcon}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+            </div>
+            <p style={styles.dropZoneTitle}>Drop your track here</p>
+            <p style={styles.dropZoneSub}>or click to browse &middot; MP3 / WAV &middot; up to 50MB</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Divider ── */}
+      <div style={styles.divider}>
+        <div style={styles.dividerLine} />
+        <span style={styles.dividerText}>or paste a YouTube link</span>
+        <div style={styles.dividerLine} />
+      </div>
+
+      {/* ── YouTube URL Input ── */}
+      <div style={styles.urlRow}>
+        <input
+          type="url"
+          value={urlInput}
+          disabled={disabled}
+          onChange={(event) => setUrlInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleProcessUrlClick();
+            }
+          }}
+          placeholder="https://www.youtube.com/watch?v=..."
+          style={styles.urlInput}
+        />
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={disabled || urlInput.trim().length === 0}
+          onClick={handleProcessUrlClick}
+        >
+          Go!
+        </button>
+      </div>
     </section>
   );
 }
 
 const styles: Record<string, CSSProperties> = {
-  wrapper: {
-    border: "1px solid #d3d7df",
-    borderRadius: 10,
-    padding: 20,
-    backgroundColor: "#ffffff",
-    transition: "border-color 120ms ease, background-color 120ms ease",
-  },
-  wrapperDragOver: {
-    borderColor: "#3f6ce5",
-    backgroundColor: "#f3f7ff",
-  },
-  heading: {
-    margin: "0 0 8px",
-    fontSize: 20,
-  },
-  description: {
-    margin: "0 0 16px",
-    color: "#4d596a",
-  },
-  button: {
-    backgroundColor: "#1041d1",
-    color: "#fff",
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 16px",
+  /* ── Drop zone ── */
+  dropZone: {
+    border: "2px dashed rgba(200, 64, 255, 0.3)",
+    borderRadius: 14,
+    padding: 32,
     cursor: "pointer",
-    fontWeight: 600,
-    marginRight: 8,
+    transition: "border-color 200ms ease, background 200ms ease, box-shadow 200ms ease",
+    background: "rgba(200, 64, 255, 0.03)",
+    textAlign: "center",
   },
-  buttonDisabled: {
-    backgroundColor: "#98a8ce",
-    color: "#fff",
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 16px",
+  dropZoneDragOver: {
+    borderColor: "#ff2d78",
+    background: "rgba(255, 45, 120, 0.06)",
+    boxShadow: "0 0 30px rgba(255, 45, 120, 0.12) inset",
+  },
+  dropZoneDisabled: {
+    opacity: 0.5,
     cursor: "not-allowed",
-    fontWeight: 600,
-    marginRight: 8,
   },
-  processButton: {
-    backgroundColor: "#0d7f5f",
-    color: "#fff",
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 16px",
+  dropZoneWithFile: {
+    borderStyle: "solid",
+    borderColor: "rgba(200, 64, 255, 0.4)",
+    background: "rgba(200, 64, 255, 0.06)",
+    cursor: "default",
+  },
+  dropZoneContent: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+  },
+  musicIcon: {
+    color: "rgba(200, 64, 255, 0.6)",
+    marginBottom: 4,
+  },
+  dropZoneTitle: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 600,
+    color: "#e8e0f0",
+  },
+  dropZoneSub: {
+    margin: 0,
+    fontSize: 13,
+    color: "rgba(232, 224, 240, 0.5)",
+  },
+
+  /* ── File selected state ── */
+  fileSelectedContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    flexWrap: "wrap",
+    justifyContent: "center",
+    textAlign: "left",
+  },
+  fileIcon: {
+    color: "#c840ff",
+    flexShrink: 0,
+  },
+  fileDetails: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    flex: 1,
+    minWidth: 140,
+  },
+  fileName: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: "#e8e0f0",
+    wordBreak: "break-all",
+  },
+  fileSize: {
+    fontSize: 13,
+    color: "rgba(232, 224, 240, 0.5)",
+  },
+  fileActions: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  changeFileLink: {
+    background: "none",
+    border: "none",
+    color: "rgba(200, 143, 255, 0.7)",
+    fontSize: 12,
     cursor: "pointer",
-    fontWeight: 600,
+    padding: 0,
+    fontFamily: "'Outfit', sans-serif",
+    transition: "color 150ms ease",
   },
-  processButtonDisabled: {
-    backgroundColor: "#9ec8bc",
-    color: "#fff",
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 16px",
-    cursor: "not-allowed",
-    fontWeight: 600,
+
+  /* ── Divider ── */
+  divider: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    margin: "24px 0 20px",
   },
-  fileInfo: {
-    margin: "14px 0 10px",
-    color: "#2f3b52",
-    fontWeight: 600,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    background: "rgba(255, 255, 255, 0.08)",
+  },
+  dividerText: {
+    fontSize: 13,
+    color: "rgba(232, 224, 240, 0.4)",
+    fontWeight: 500,
+    whiteSpace: "nowrap",
+  },
+
+  /* ── YouTube URL ── */
+  urlRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+  urlInput: {
+    flex: 1,
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    borderRadius: 12,
+    padding: "11px 14px",
+    background: "rgba(255, 255, 255, 0.04)",
+    color: "#e8e0f0",
+    fontSize: 14,
+    fontFamily: "'Outfit', sans-serif",
+    outline: "none",
+    transition: "border-color 200ms ease, box-shadow 200ms ease",
   },
 };
