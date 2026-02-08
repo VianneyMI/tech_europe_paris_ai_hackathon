@@ -347,7 +347,7 @@ export default function KaraokePlayer({ instrumentalUrl, timestamps }: KaraokePl
                 lineElementsRef.current[lineIndex] = element;
               }}
             >
-              {line.words.map((word, wordIndexInLine) => (
+              {line.words.map((word) => (
                 <span
                   key={`${line.id}-${word.wordIndex}`}
                   className={
@@ -357,7 +357,6 @@ export default function KaraokePlayer({ instrumentalUrl, timestamps }: KaraokePl
                   }
                 >
                   {word.segment.text}
-                  {wordIndexInLine < line.words.length - 1 ? " " : ""}
                 </span>
               ))}
             </div>
