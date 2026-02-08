@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     upload_max_mb: int = 50
     job_ttl_seconds: int = 1800
     cleanup_interval_seconds: int = 300
+    youtube_cache_dir: str = "/tmp/sge-youtube-cache"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     model_config = SettingsConfigDict(

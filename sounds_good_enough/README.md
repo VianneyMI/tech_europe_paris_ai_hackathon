@@ -2,9 +2,10 @@
 
 A weekend-hackathon app that:
 1. Accepts an uploaded MP3/WAV file.
-2. Separates vocals and instrumental stems with Demucs.
-3. Sends `vocals.wav` to Gradium STT (buffered mode).
-4. Returns lyrics + timestamps and serves both separated WAV files.
+2. Accepts a YouTube link and processes it in the background.
+3. Separates vocals and instrumental stems with Demucs.
+4. Sends `vocals.wav` to Gradium STT (buffered mode).
+5. Returns lyrics + timestamps and serves both separated WAV files.
 
 ## Stack
 
@@ -17,6 +18,7 @@ A weekend-hackathon app that:
 - Node.js 20+
 - `ffmpeg` on your `PATH`
 - Gradium API key
+- `yt-dlp` Python package (installed via backend dependencies)
 
 ## Backend Setup
 
@@ -36,6 +38,8 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 Backend endpoints:
 
 - `POST /api/process` (multipart: `file`)
+- `POST /api/process/url` (json: `{"url": "https://..."}`) starts background processing
+- `GET /api/jobs/{job_id}` polls URL-processing status/result
 - `GET /api/files/{job_id}/{filename}` (`vocals.wav` or `instrumental.wav`)
 
 ## Frontend Setup
@@ -81,6 +85,7 @@ npm run build
 - First Demucs run can be slow due to model weight download.
 - No database is used; job files are stored in temp directories and cleaned up by TTL and app shutdown.
 - Upload limit defaults to 50MB.
+- YouTube source downloads are cached by normalized video URL key to avoid re-downloading.
 
 ## Config
 
@@ -92,3 +97,4 @@ Backend settings are read from environment variables (`app/config.py`):
 - `upload_max_mb` (default: `50`)
 - `job_ttl_seconds` (default: `1800`)
 - `cleanup_interval_seconds` (default: `300`)
+- `youtube_cache_dir` (default: `/tmp/sge-youtube-cache`)

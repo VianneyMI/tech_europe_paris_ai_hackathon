@@ -5,6 +5,7 @@ import type { CSSProperties, JSX } from "react";
 interface UploadZoneProps {
   disabled: boolean;
   onSelectFile: (file: File) => void;
+  onSubmitUrl: (url: string) => void;
 }
 
 const ACCEPTED_TYPES = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp3"];
@@ -17,9 +18,10 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps): JSX.Element {
+export default function UploadZone({ disabled, onSelectFile, onSubmitUrl }: UploadZoneProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [urlInput, setUrlInput] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
   const handleFiles = (fileList: FileList | null): void => {
@@ -83,6 +85,19 @@ export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps):
     onSelectFile(selectedFile);
   };
 
+  const handleProcessUrlClick = (): void => {
+    const url = urlInput.trim();
+    if (!url || disabled) {
+      return;
+    }
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      window.alert("Please paste a valid URL starting with http:// or https://.");
+      return;
+    }
+    setUrlInput("");
+    onSubmitUrl(url);
+  };
+
   return (
     <section
       style={{
@@ -125,6 +140,24 @@ export default function UploadZone({ disabled, onSelectFile }: UploadZoneProps):
       >
         Process Song
       </button>
+      <hr style={styles.divider} />
+      <h3 style={styles.subheading}>Or paste a YouTube link</h3>
+      <input
+        type="url"
+        value={urlInput}
+        disabled={disabled}
+        onChange={(event) => setUrlInput(event.target.value)}
+        placeholder="https://www.youtube.com/watch?v=..."
+        style={styles.urlInput}
+      />
+      <button
+        type="button"
+        disabled={disabled || urlInput.trim().length === 0}
+        style={disabled || urlInput.trim().length === 0 ? styles.processButtonDisabled : styles.processButton}
+        onClick={handleProcessUrlClick}
+      >
+        Process YouTube Link
+      </button>
     </section>
   );
 }
@@ -144,6 +177,10 @@ const styles: Record<string, CSSProperties> = {
   heading: {
     margin: "0 0 8px",
     fontSize: 20,
+  },
+  subheading: {
+    margin: "0 0 8px",
+    fontSize: 16,
   },
   description: {
     margin: "0 0 16px",
@@ -191,5 +228,18 @@ const styles: Record<string, CSSProperties> = {
     margin: "14px 0 10px",
     color: "#2f3b52",
     fontWeight: 600,
+  },
+  divider: {
+    margin: "20px 0 16px",
+    border: 0,
+    borderTop: "1px solid #e1e6f0",
+  },
+  urlInput: {
+    border: "1px solid #c8d0df",
+    borderRadius: 8,
+    padding: "10px 12px",
+    marginBottom: 10,
+    width: "100%",
+    boxSizing: "border-box",
   },
 };

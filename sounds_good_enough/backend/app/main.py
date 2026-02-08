@@ -15,8 +15,9 @@ from typing import TYPE_CHECKING, cast
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import StoredJob, router
+from app.api.routes import ProcessingJob, StoredJob, router
 from app.config import Settings, get_settings
+from app.services.video_source import DownloadedAudio
 
 if TYPE_CHECKING:
     from app.models import ProcessResponse
@@ -74,6 +75,18 @@ async def _cleanup_loop(app: FastAPI) -> None:
             if job.path.exists():
                 shutil.rmtree(job.path, ignore_errors=True)
 
+        processing_jobs = cast(dict[str, ProcessingJob], app.state.processing_jobs)
+        source_to_job = cast(dict[str, str], app.state.source_to_job)
+        stale_processing = [
+            job_id
+            for job_id, job in processing_jobs.items()
+            if now - job.created_at > app.state.settings.job_ttl_seconds and job.status not in {"queued", "processing"}
+        ]
+        for job_id in stale_processing:
+            stale = processing_jobs.pop(job_id)
+            if source_to_job.get(stale.source_key) == job_id:
+                source_to_job.pop(stale.source_key, None)
+
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -83,6 +96,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = get_settings()
     app.state.jobs = cast(dict[str, StoredJob], {})
     app.state.cache = cast(dict[str, tuple[str, "ProcessResponse"]], {})
+    app.state.processing_jobs = cast(dict[str, ProcessingJob], {})
+    app.state.source_to_job = cast(dict[str, str], {})
+    app.state.source_cache = cast(dict[str, DownloadedAudio], {})
     app.state.demo_job_id = cast(str | None, None)
     app.state.demo_response = cast("ProcessResponse | None", None)
     app.state.demo_job_id = DEMO_JOB_ID
@@ -95,6 +111,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         cleanup_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await cleanup_task
+        processing_jobs = cast(dict[str, ProcessingJob], app.state.processing_jobs)
+        for processing_job in processing_jobs.values():
+            if processing_job.task and not processing_job.task.done():
+                processing_job.task.cancel()
+        for processing_job in processing_jobs.values():
+            if processing_job.task:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await processing_job.task
         jobs = cast(dict[str, StoredJob], app.state.jobs)
         demo_job_id = cast(str | None, app.state.demo_job_id)
         for job_id, job in jobs.items():

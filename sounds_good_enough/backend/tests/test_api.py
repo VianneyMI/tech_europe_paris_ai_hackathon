@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,6 +10,7 @@ from fastapi.testclient import TestClient
 from app.api import routes
 from app.services.separator import SeparationResult
 from app.services.transcriber import TranscriptionResult, TranscriptionSegment
+from app.services.video_source import DownloadedAudio
 
 
 def test_process_and_files_flow(monkeypatch, client: TestClient) -> None:
@@ -119,3 +121,116 @@ def test_process_uses_cache_for_identical_upload(monkeypatch, client: TestClient
     assert first_response.json() == second_response.json()
     assert call_counts["separate"] == 1
     assert call_counts["transcribe"] == 1
+
+
+def test_process_url_background_job(monkeypatch, client: TestClient, tmp_path: Path) -> None:
+    """URL processing should run in background and expose result via job polling."""
+
+    source_path = tmp_path / "source.m4a"
+    source_path.write_bytes(b"yt-audio")
+
+    async def fake_resolve_youtube_audio(
+        url: str,
+        cache_dir: Path,
+        known_sources: dict[str, DownloadedAudio],
+    ) -> DownloadedAudio:
+        return DownloadedAudio(source_key="youtube:test123", path=source_path, file_hash="hash-123")
+
+    async def fake_separate(
+        input_path: Path,
+        output_dir: Path,
+        model: str = "htdemucs",
+        device: str = "cpu",
+    ) -> SeparationResult:
+        vocals = output_dir / "vocals.wav"
+        instrumental = output_dir / "instrumental.wav"
+        vocals.write_bytes(b"vocals-audio")
+        instrumental.write_bytes(b"inst-audio")
+        return SeparationResult(vocals_path=vocals, instrumental_path=instrumental)
+
+    async def fake_transcribe(audio_path: Path, api_key: str) -> TranscriptionResult:
+        return TranscriptionResult(
+            text="youtube lyrics",
+            segments=[TranscriptionSegment(text="youtube", start_s=0.0, stop_s=0.6)],
+        )
+
+    monkeypatch.setattr(routes, "resolve_youtube_audio", fake_resolve_youtube_audio)
+    monkeypatch.setattr(routes, "separate", fake_separate)
+    monkeypatch.setattr(routes, "transcribe", fake_transcribe)
+
+    start = client.post("/api/process/url", json={"url": "https://www.youtube.com/watch?v=test123"})
+    assert start.status_code == 202
+    job_id = start.json()["job_id"]
+
+    payload: dict[str, object] = {}
+    for _ in range(50):
+        poll = client.get(f"/api/jobs/{job_id}")
+        assert poll.status_code == 200
+        payload = poll.json()
+        if payload["status"] == "done":
+            break
+        if payload["status"] == "error":
+            raise AssertionError(f"Job unexpectedly failed: {payload['error']}")
+        time.sleep(0.02)
+    else:
+        raise AssertionError("Background job did not complete in time.")
+
+    assert payload["status"] == "done"
+    result = payload["result"]
+    assert isinstance(result, dict)
+    assert result["lyrics"] == "youtube lyrics"
+
+
+def test_process_url_reuses_existing_done_job(monkeypatch, client: TestClient, tmp_path: Path) -> None:
+    """Submitting the same URL after success should return cached done job immediately."""
+
+    source_path = tmp_path / "source.m4a"
+    source_path.write_bytes(b"yt-audio")
+    call_count = {"resolve": 0}
+
+    async def fake_resolve_youtube_audio(
+        url: str,
+        cache_dir: Path,
+        known_sources: dict[str, DownloadedAudio],
+    ) -> DownloadedAudio:
+        call_count["resolve"] += 1
+        return DownloadedAudio(source_key="youtube:test123", path=source_path, file_hash="hash-123")
+
+    async def fake_separate(
+        input_path: Path,
+        output_dir: Path,
+        model: str = "htdemucs",
+        device: str = "cpu",
+    ) -> SeparationResult:
+        vocals = output_dir / "vocals.wav"
+        instrumental = output_dir / "instrumental.wav"
+        vocals.write_bytes(b"vocals-audio")
+        instrumental.write_bytes(b"inst-audio")
+        return SeparationResult(vocals_path=vocals, instrumental_path=instrumental)
+
+    async def fake_transcribe(audio_path: Path, api_key: str) -> TranscriptionResult:
+        return TranscriptionResult(
+            text="youtube lyrics",
+            segments=[TranscriptionSegment(text="youtube", start_s=0.0, stop_s=0.6)],
+        )
+
+    monkeypatch.setattr(routes, "resolve_youtube_audio", fake_resolve_youtube_audio)
+    monkeypatch.setattr(routes, "separate", fake_separate)
+    monkeypatch.setattr(routes, "transcribe", fake_transcribe)
+
+    first = client.post("/api/process/url", json={"url": "https://youtu.be/test123"})
+    assert first.status_code == 202
+    first_job_id = first.json()["job_id"]
+    for _ in range(50):
+        poll = client.get(f"/api/jobs/{first_job_id}")
+        assert poll.status_code == 200
+        if poll.json()["status"] == "done":
+            break
+        time.sleep(0.02)
+
+    second = client.post("/api/process/url", json={"url": "https://www.youtube.com/watch?v=test123"})
+    assert second.status_code == 202
+    second_payload = second.json()
+    assert second_payload["status"] == "done"
+    assert second_payload["job_id"] == first_job_id
+    assert call_count["resolve"] == 1
