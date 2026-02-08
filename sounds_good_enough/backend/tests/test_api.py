@@ -70,6 +70,13 @@ def test_get_file_rejects_unknown_filename(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+def test_demo_returns_404_without_seed_data(client: TestClient) -> None:
+    """Demo endpoint should return 404 when demo data is not pre-seeded."""
+
+    response = client.get("/api/demo")
+    assert response.status_code == 404
+
+
 def test_process_uses_cache_for_identical_upload(monkeypatch, client: TestClient) -> None:
     """Processing the same file twice should use the in-memory cache on the second request."""
 

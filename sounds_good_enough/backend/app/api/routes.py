@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import uuid4
-import shutil
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -62,7 +62,10 @@ def _cleanup_expired_jobs(request: Request) -> None:
     expired = [
         job_id
         for job_id, job in jobs.items()
-        if now - job.created_at > settings.job_ttl_seconds
+        if (
+            now - job.created_at > settings.job_ttl_seconds
+            and job_id != getattr(request.app.state, "demo_job_id", None)
+        )
     ]
     for job_id in expired:
         job = jobs.pop(job_id)
@@ -140,6 +143,16 @@ async def process_audio(
     request.app.state.jobs[job_id] = StoredJob(path=job_dir, created_at=time.time())
     cache[file_hash] = (job_id, response)
     return response
+
+
+@router.get("/demo", response_model=ProcessResponse)
+async def get_demo(request: Request) -> ProcessResponse:
+    """Return pre-seeded demo processing results when available."""
+
+    demo_response = cast(ProcessResponse | None, getattr(request.app.state, "demo_response", None))
+    if demo_response is None:
+        raise HTTPException(status_code=404, detail="Demo data not available.")
+    return demo_response
 
 
 @router.get("/files/{job_id}/{filename}")
