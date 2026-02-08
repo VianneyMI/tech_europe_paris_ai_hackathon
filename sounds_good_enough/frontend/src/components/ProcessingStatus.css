@@ -1,0 +1,14 @@
+.processing-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f5dba2;
+  border-top-color: #946100;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

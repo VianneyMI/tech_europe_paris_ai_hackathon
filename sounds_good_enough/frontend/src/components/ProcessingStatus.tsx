@@ -1,4 +1,5 @@
 import type { CSSProperties, JSX } from "react";
+import "./ProcessingStatus.css";
 
 interface ProcessingStatusProps {
   status: "idle" | "processing" | "done" | "error";
@@ -18,7 +19,10 @@ export default function ProcessingStatus({ status, message }: ProcessingStatusPr
   return (
     <section style={{ ...styles.wrapper, borderColor: color }}>
       <h2 style={styles.heading}>Status</h2>
-      <p style={{ margin: 0, color }}>{message}</p>
+      <div style={styles.messageRow}>
+        {status === "processing" ? <span className="processing-spinner" aria-hidden="true" /> : null}
+        <p style={{ margin: 0, color }}>{message}</p>
+      </div>
     </section>
   );
 }
@@ -33,5 +37,10 @@ const styles: Record<string, CSSProperties> = {
   heading: {
     margin: "0 0 8px",
     fontSize: 18,
+  },
+  messageRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
   },
 };
